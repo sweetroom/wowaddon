@@ -1,0 +1,9 @@
+## Interface: 110000
+## Title: 길드원 접속 시 자동 인사
+## Notes: 길드에 신규 사용자가 접속하면 직업에 맞게 자동으로 인사해주는 에드온
+## Author: 접종
+## Version: 1.2
+## SavedVariables: GuildMemberTrackerDB
+
+# 메인 애드온 파일
+WoWGuildLoginNotification.lua
