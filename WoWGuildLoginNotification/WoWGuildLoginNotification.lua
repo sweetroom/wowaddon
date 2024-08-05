@@ -31,6 +31,99 @@ local defaultGreetingMessages = {
     ["EVOKER"] = "어서오세요 고대의 기억을 가진 %s님!"
 }
 
+-- 설정 창 생성
+local function CreateSettingsFrame()
+    local f = CreateFrame("Frame", "GuildGreetingSettingsFrame", UIParent, "BasicFrameTemplateWithInset")
+    f:SetSize(600, 530)  -- 프레임 너비를 늘렸습니다
+    f:SetPoint("CENTER")
+    f:SetMovable(true)
+    f:EnableMouse(true)
+    f:RegisterForDrag("LeftButton")
+    f:SetScript("OnDragStart", f.StartMoving)
+    f:SetScript("OnDragStop", f.StopMovingOrSizing)
+    f:Hide()
+
+    f.title = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    f.title:SetPoint("TOP", f, "TOP", 0, -5)
+    f.title:SetText("길드 인사말 설정")
+
+    local scrollFrame = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
+    scrollFrame:SetPoint("TOPLEFT", f, 20, -30)
+    scrollFrame:SetPoint("BOTTOMRIGHT", f, -40, 40)
+
+    local content = CreateFrame("Frame", nil, scrollFrame)
+    content:SetSize(530, 1)  -- 컨텐츠 너비를 늘렸습니다
+    scrollFrame:SetScrollChild(content)
+
+    local editBoxes = {}
+    local yOffset = 0
+
+    for class, message in pairs(defaultGreetingMessages) do
+        local classFrame = CreateFrame("Frame", nil, content)
+        classFrame:SetSize(510, 30)  -- 프레임 크기를 조정했습니다
+        classFrame:SetPoint("TOPLEFT", content, "TOPLEFT", 10, yOffset)
+
+        local label = classFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        label:SetPoint("LEFT", classFrame, "LEFT", 0, 0)
+        label:SetText(class .. ":")
+        label:SetWidth(100)  -- 레이블 너비를 고정했습니다
+
+        local editBox = CreateFrame("EditBox", nil, classFrame, "InputBoxTemplate")
+        editBox:SetSize(250, 20)
+        editBox:SetPoint("LEFT", label, "RIGHT", 10, 0)
+        editBox:SetText(message)
+        editBox:SetAutoFocus(false)
+        editBox:SetJustifyH("LEFT")
+
+        local saveButton = CreateFrame("Button", nil, classFrame, "UIPanelButtonTemplate")
+        saveButton:SetSize(60, 20)
+        saveButton:SetPoint("LEFT", editBox, "RIGHT", 10, 0)
+        saveButton:SetText("저장")
+        saveButton:SetScript("OnClick", function()
+            defaultGreetingMessages[class] = editBox:GetText()
+            print(class .. " 직업의 인사말이 저장되었습니다.")
+        end)
+
+        local resetButton = CreateFrame("Button", nil, classFrame, "UIPanelButtonTemplate")
+        resetButton:SetSize(60, 20)
+        resetButton:SetPoint("LEFT", saveButton, "RIGHT", 5, 0)
+        resetButton:SetText("기본값")
+        resetButton:SetScript("OnClick", function()
+            editBox:SetText(defaultGreetingMessages[class])
+            print(class .. " 직업의 인사말이 기본값으로 초기화되었습니다.")
+        end)
+
+        editBoxes[class] = editBox
+        yOffset = yOffset - 35  -- 간격을 조정했습니다
+    end
+
+    content:SetHeight(-yOffset)
+
+    return f
+end
+
+-- 미니맵 아이콘 생성
+local minimapIcon = LibStub("LibDataBroker-1.1"):NewDataObject("GuildGreetingAddon", {
+    type = "data source",
+    text = "Guild Greeting",
+    icon = "Interface\\Icons\\INV_Misc_Note_01",
+    OnClick = function(self, button)
+        if button == "LeftButton" then
+            if not GuildGreetingSettingsFrame then
+                GuildGreetingSettingsFrame = CreateSettingsFrame()
+            end
+            GuildGreetingSettingsFrame:SetShown(not GuildGreetingSettingsFrame:IsShown())
+        end
+    end,
+    OnTooltipShow = function(tooltip)
+        tooltip:AddLine("Guild Greeting Addon")
+        tooltip:AddLine("왼쪽 클릭: 설정 열기")
+    end,
+})
+
+local minimapIconLDB = LibStub("LibDBIcon-1.0")
+minimapIconLDB:Register("GuildGreetingAddon", minimapIcon, GuildMemberTrackerDB.minimapIcon)
+
 -- 서버명을 제거하는 함수
 local function RemoveServerName(name)
     return string.gsub(name, "-.+", "")
@@ -125,6 +218,8 @@ local function OnEvent(self, event)
     if event == "PLAYER_LOGIN" then
         -- 로그인 시 길드 정보 업데이트 요청
         GuildRoster()
+        -- 미니맵 아이콘 표시
+        minimapIconLDB:Show("GuildGreetingAddon")
     elseif event == "GUILD_ROSTER_UPDATE" then
         -- 타이머가 이미 실행 중이면 취소
         if updateTimer then
